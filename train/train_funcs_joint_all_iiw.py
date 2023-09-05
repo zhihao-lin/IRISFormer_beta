@@ -23,7 +23,7 @@ def get_time_meters_joint_iiw():
     time_meters['data_to_gpu'] = AverageMeter()
     time_meters['forward'] = AverageMeter()
     time_meters['loss_iiw'] = AverageMeter()
-    time_meters['backward'] = AverageMeter()    
+    time_meters['backward'] = AverageMeter()
     return time_meters
 
 def get_iiw_meters(opt):
@@ -71,13 +71,13 @@ def val_epoch_joint_iiw(iiw_loader_val, model, params_mis):
     logger.info(red('=== [IIW] Evaluating for %d batches'%len(iiw_loader_val)))
 
     model.eval()
-    
+
     loss_keys = [
-        'loss_iiw-eq', 
-        'loss_iiw-darker', 
-        'loss_iiw-ALL', 
+        'loss_iiw-eq',
+        'loss_iiw-darker',
+        'loss_iiw-ALL',
     ]
-        
+
     loss_meters = {loss_key: AverageMeter() for loss_key in loss_keys}
     time_meters = get_time_meters_joint_iiw()
 
@@ -103,7 +103,7 @@ def val_epoch_joint_iiw(iiw_loader_val, model, params_mis):
 
             loss_dict_reduced = reduce_loss_dict(loss_dict, mark=tid, logger=logger) # **average** over multi GPUs
             time_meters['ts'] = time.time()
-            
+
             # ======= update loss
             if len(loss_dict_reduced.keys()) != 0:
                 for loss_key in loss_dict_reduced:
@@ -170,7 +170,7 @@ def vis_val_epoch_joint_iiw(iiw_loader_val, model, params_mis):
     diffusePreBatch_list = []
     specularPreBatch_list = []
     renderedImBatch_list = []
-    
+
     albedoPreds_list = []
     normalPreds_list = []
     roughPreds_list = []
@@ -180,19 +180,16 @@ def vis_val_epoch_joint_iiw(iiw_loader_val, model, params_mis):
 
     im_h_resized_to_list, im_w_resized_to_list = [], []
 
-
     # ===== Gather vis of N batches
     with torch.no_grad():
         im_single_list = []
         for batch_id, data_batch in enumerate(iiw_loader_val):
-            if batch_size*batch_id >= opt.cfg.TEST.vis_max_samples:
-                break
 
             input_dict = get_labels_dict_joint_iiw(data_batch, opt)
 
             # ======= Forward
             output_dict, _ = forward_joint_iiw(False, input_dict, model, opt, time_meters, if_vis=True)
-            
+
             # ======= Vis imagges
 
             for sample_idx_batch, (im_single, im_path) in enumerate(zip(data_batch['im_fixedscale_SDR'], data_batch['image_path'])):
@@ -214,7 +211,7 @@ def vis_val_epoch_joint_iiw(iiw_loader_val, model, params_mis):
                     writer.add_text('IIW_VAL_image_name/%d'%(sample_idx), im_path, tid)
                     assert sample_idx == data_batch['image_index'][sample_idx_batch]
 
-            
+
             # ===== Vis BRDF 1/2
             if opt.cfg.MODEL_BRDF.enable and opt.cfg.MODEL_BRDF.enable_BRDF_decoders:
                 im_paths_list.append(input_dict['im_paths'])
@@ -231,7 +228,7 @@ def vis_val_epoch_joint_iiw(iiw_loader_val, model, params_mis):
 
                 if 'al' in opt.cfg.MODEL_BRDF.enable_list:
                     # albedoPreds_list.append(output_dict['albedoPreds'][n])
-                    albedoPreds_list.append(output_dict['albedoPred'])
+                    albedoPreds_list.append(output_dict['albedoPred']) #(2, 3, 256, 320)
                     if opt.cfg.MODEL_BRDF.if_bilateral:
                         albedoBsPreds_list.append(output_dict['albedoBsPred'])
 
@@ -247,7 +244,10 @@ def vis_val_epoch_joint_iiw(iiw_loader_val, model, params_mis):
                     # depthPreds_list.append(output_dict['depthPreds'][n])
                     depthPreds_list.append(output_dict['depthPred'])
 
-
+    im_h = int(data_batch['im_h'][0].item())
+    im_w = int(data_batch['im_w'][0].item())
+    im_h_resized_to = int(data_batch['im_h_resized_to'][0].item())
+    im_w_resized_to = int(data_batch['im_w_resized_to'][0].item())
     # ===== Vis BRDF 2/2
     # ===== logging top N to TB
     if opt.cfg.MODEL_BRDF.enable and opt.cfg.MODEL_BRDF.enable_BRDF_decoders:
@@ -256,7 +256,7 @@ def vis_val_epoch_joint_iiw(iiw_loader_val, model, params_mis):
         im_w_resized_to_list = flatten_list(im_w_resized_to_list)
 
         if 'al' in opt.cfg.MODEL_BRDF.enable_list:
-            albedoPreds_vis = torch.cat(albedoPreds_list)
+            albedoPreds_vis = torch.cat(albedoPreds_list) #(n, 3, 256, 320)
             if opt.cfg.MODEL_BRDF.if_bilateral:
                 albedoBsPreds_vis = torch.cat(albedoBsPreds_list)
 
@@ -281,13 +281,21 @@ def vis_val_epoch_joint_iiw(iiw_loader_val, model, params_mis):
 
         # ==== Preds
         if 'al' in opt.cfg.MODEL_BRDF.enable_list:
-            albedo_pred_batch_vis_sdr = ( (albedoPreds_vis ) ** (1.0/2.2) ).data
+            # albedo_pred_batch_vis_sdr = ( (albedoPreds_vis ) ** (1.0/2.2) ).data
+            albedo_pred_batch_vis_sdr = (albedoPreds_vis).data
             if opt.cfg.MODEL_BRDF.if_bilateral:
                 albedo_bs_pred_batch_vis_sdr = ( (albedoBsPreds_vis ) ** (1.0/2.2) ).data
 
-            if opt.is_master:
-                vutils.save_image(albedo_pred_batch_vis_sdr,
-                        '{0}/IIW_{1}_albedoPred_{2}.png'.format(opt.summary_vis_path_task, tid, n) )
+            for i in range(len(albedo_pred_batch_vis_sdr)):
+                img = albedo_pred_batch_vis_sdr[i].permute(1, 2, 0).cpu()
+                img = (img.numpy() * 255).astype(np.uint8)
+                img = cv2.resize(img[:im_h_resized_to, :im_w_resized_to], (im_w, im_h), interpolation=cv2.INTER_CUBIC)
+                img = Image.fromarray(img)
+                img.save(os.path.join(opt.summary_vis_path_task, '{:0>5d}.png'.format(i)))
+
+            # if opt.is_master:
+            #     vutils.save_image(albedo_pred_batch_vis_sdr,
+            #             '{0}/IIW_{1}_albedoPred_{2}.png'.format(opt.summary_vis_path_task, tid, n) )
 
         if 'no' in opt.cfg.MODEL_BRDF.enable_list:
             normal_pred_batch_vis_sdr = ( 0.5*(normalPreds_vis + 1) ).data

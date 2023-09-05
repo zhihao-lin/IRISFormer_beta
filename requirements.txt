@@ -1,18 +1,18 @@
 # python 3.10
 # torch==2.0.0
 
-opencv-python==4.2.0.34
+opencv-python
 psutil
 h5py
 matplotlib
 scipy
-scikit-image==0.16.2
+# scikit-image==0.16.2
 tqdm
 tensorboard
 torchsummary
 statistics
 tables
-pyyaml==5.4.1
+# pyyaml==5.4.1
 yacs
 pathlib
 termcolor

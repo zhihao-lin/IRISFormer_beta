@@ -161,6 +161,9 @@ class Checkpointer(object):
         if save_file is not None:
             return save_file
 
+        # DEBUG
+        return os.path.join(ckpt_folder, "last_checkpoint.pth")
+
         save_file = os.path.join(ckpt_folder, "last_checkpoint")
         if os.path.exists(save_file):
             try:

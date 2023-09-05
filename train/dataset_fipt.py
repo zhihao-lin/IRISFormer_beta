@@ -27,7 +27,7 @@ from utils import transform
 
 from utils_dataset_openrooms_OR_scanNetPose_light_20210928 import *
 import json
-class iiw(data.Dataset):
+class DatasetFIPT(data.Dataset):
     def __init__(self, opt, data_list=None, logger=basic_logger(), transforms_fixed=None, transforms_semseg=None, transforms_matseg=None, transforms_resize=None,
             split='train', task=None, if_for_training=True, load_first = -1, rseed = 1,
             cascadeLevel = 0,
@@ -49,24 +49,11 @@ class iiw(data.Dataset):
         self.maxNum = maxNum
 
         self.data_root = self.opt.cfg.DATASET.iiw_path
-        data_list_path = Path(self.cfg.PATH.root) / self.cfg.DATASET.iiw_list_path
-        # train/data/iiw/list
-        # self.data_list = make_dataset_real(opt, self.data_root, data_list_path, logger=self.logger)
-
-        if split == 'train':
-            with open(str(data_list_path / 'IIWTrain.txt'), 'r') as fIn:
-                im_list = fIn.readlines()
-            self.data_list = [osp.join(self.data_root, x.strip()) for x in im_list ]
-        elif split == 'val':
-            with open(str(data_list_path / 'IIWTest.txt'), 'r') as fIn:
-                im_list = fIn.readlines()
-            self.data_list = [osp.join(self.data_root, x.strip()) for x in im_list ]
-        else:
-            raise RuntimeError("Invalid split %s for iiw!"%split)
-
-        self.json_list = [x.replace('.png', '.json') for x in self.data_list]
-
-
+        dir_scene = os.path.join(self.data_root, self.opt.cfg.DATASET.fipt_scene)
+        dir_images = os.path.join(dir_scene, split, 'Image')
+        self.data_list = [os.path.join(dir_images, x) for x in sorted(os.listdir(dir_images)) if x.endswith('.png')]
+        json_path = os.path.join(self.data_root, 'temp.json')
+        self.json_list = [json_path for i in range(len(self.data_list))]
 
         logger.info(white_blue('%s: total frames: %d'%(self.dataset_name, len(self.data_list))))
 
@@ -99,8 +86,10 @@ class iiw(data.Dataset):
     def __getitem__(self, index):
 
         png_image_path = self.data_list[index]
+        img_name = png_image_path.split('/')[-1]
+
         # frame_info = {'index': index, 'png_image_path': png_image_path}
-        batch_dict = {'image_index': index}
+        batch_dict = {'image_index': index, 'image_name': img_name}
 
         pad_mask = np.zeros((self.im_height_padded, self.im_width_padded), dtype=np.uint8)
 
@@ -148,7 +137,12 @@ class iiw(data.Dataset):
             # gap = im_w_resized_to - self.im_width_padded
             # cs = np.random.randint(gap + 1)
             # ce = cs + self.im_width_padded
-
+        batch_dict.update({
+            'im_h': im_h,
+            'im_w': im_w,
+            'im_h_resized_to': im_h_resized_to,
+            'im_w_resized_to': im_w_resized_to,
+        })
 
         im_fixedscale_SDR_uint8 = cv2.resize(im_fixedscale_SDR_uint8, (im_w_resized_to, im_h_resized_to), interpolation = cv2.INTER_AREA )
         # print(im_w_resized_to, im_h_resized_to, im_w, im_h)
