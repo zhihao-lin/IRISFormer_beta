@@ -183,8 +183,9 @@ def vis_val_epoch_joint_iiw(iiw_loader_val, model, params_mis):
     # ===== Gather vis of N batches
     with torch.no_grad():
         im_single_list = []
+        image_names = []
         for batch_id, data_batch in enumerate(iiw_loader_val):
-
+            image_names += data_batch['image_name']
             input_dict = get_labels_dict_joint_iiw(data_batch, opt)
 
             # ======= Forward
@@ -291,7 +292,7 @@ def vis_val_epoch_joint_iiw(iiw_loader_val, model, params_mis):
                 img = (img.numpy() * 255).astype(np.uint8)
                 img = cv2.resize(img[:im_h_resized_to, :im_w_resized_to], (im_w, im_h), interpolation=cv2.INTER_CUBIC)
                 img = Image.fromarray(img)
-                img.save(os.path.join(opt.summary_vis_path_task, '{:0>5d}.png'.format(i)))
+                img.save(os.path.join(opt.summary_vis_path_task, image_names[i]))
 
             # if opt.is_master:
             #     vutils.save_image(albedo_pred_batch_vis_sdr,
