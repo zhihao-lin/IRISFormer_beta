@@ -46,7 +46,7 @@ class DatasetCustomize(data.Dataset):
 
         self.maxNum = maxNum
         dir_images = opt.data_root
-        self.data_list = [os.path.join(dir_images, x) for x in sorted(os.listdir(dir_images)) if x.endswith('.png')]
+        self.data_list = [os.path.join(dir_images, x) for x in sorted(os.listdir(dir_images)) if is_image_name(x)]
         json_path = 'scripts/temp.json'
         self.json_list = [json_path for i in range(len(self.data_list))]
 
@@ -274,6 +274,12 @@ class DatasetCustomize(data.Dataset):
 
         return batch_dict
 
+def is_image_name(name):
+    post_fixs = ['PNG', 'png', 'JPG', 'jpg']
+    for post_fix in post_fixs:
+        if name.endswith(post_fix):
+            return True
+    return False
 
 default_collate = torch.utils.data.dataloader.default_collate
 def collate_fn_iiw(batch):
