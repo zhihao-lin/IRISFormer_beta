@@ -160,6 +160,7 @@ parser.add_argument(
     default=None,
     nargs=argparse.REMAINDER,
 )
+parser.add_argument('--dir_output')
 
 # The detail model setting
 opt = parser.parse_args()
@@ -357,7 +358,8 @@ optimizer.zero_grad()
 
 # for epoch in list(range(opt.epochIdFineTune+1, opt.cfg.SOLVER.max_epoch)):
 # for epoch_0 in list(range(1, 2) ):
-
+os.makedirs(opt.dir_output, exist_ok=True)
+opt.summary_vis_path_task = opt.dir_output
 val_params = {'writer': writer, 'logger': logger, 'opt': opt, 'tid': tid, 'bin_mean_shift': bin_mean_shift}
 if opt.if_vis:
     val_params.update({'batch_size_val_vis': batch_size_val_vis})
@@ -366,14 +368,3 @@ if opt.if_vis:
         vis_val_epoch_joint_iiw(iiw_loader_val_vis, model, val_params)
     synchronize()
 
-    quit()
-    # with torch.no_grad():
-    #     vis_val_epoch_joint(brdf_loader_val_vis, model, val_params)
-    # synchronize()
-
-if opt.if_val:
-    val_params.update({'brdf_dataset_val': brdf_dataset_val})
-    val_params.update({'iiw_dataset_val': iiw_dataset_val})
-
-    with torch.no_grad():
-        val_epoch_joint_iiw(iiw_loader_val, model, val_params)
